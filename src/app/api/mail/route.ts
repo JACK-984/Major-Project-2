@@ -20,8 +20,45 @@ export async function GET(req: Request) {
     maxResults: 10,
   });
 
-  // Return just the message IDs and basic info
-  return new NextResponse(JSON.stringify(response.data), { status: 200 });
+  // // Return just the message IDs and basic info
+  // return new NextResponse(JSON.stringify(response.data.messages), { status: 200 });
+
+  // Get full message details for each message
+  const messages = await Promise.all(
+    response.data.messages?.map(async (message) => {
+      const fullMessage = await (
+        await gmail
+      ).users.messages.get({
+        userId: "me",
+        id: message.id as string,
+        format: "metadata",
+        metadataHeaders: ["subject", "from", "date"], // Request specific headers
+      });
+
+      // Extract subject from headers
+      const subject =
+        fullMessage.data.payload?.headers?.find(
+          (header) => header.name?.toLowerCase() === "subject"
+        )?.value || "No Subject";
+
+      // Extract sender from headers
+      const from =
+        fullMessage.data.payload?.headers?.find((header) => header.name?.toLowerCase() === "from")
+          ?.value || "Unknown Sender";
+
+      return {
+        id: message.id,
+        threadId: message.threadId,
+        subject,
+        from,
+        date: fullMessage.data.payload?.headers?.find(
+          (header) => header.name?.toLowerCase() === "date"
+        )?.value,
+      };
+    }) || []
+  );
+
+  return new NextResponse(JSON.stringify({ messages }), { status: 200 });
 }
 
 // const res2 = await (await gmail).users.messages.get({
