@@ -10,6 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "../ui/button";
+import { useSession } from "next-auth/react";
+import { FcGoogle } from "react-icons/fc";
 
 interface AccountSwitcherProps {
   isCollapsed: boolean;
@@ -22,7 +25,7 @@ interface AccountSwitcherProps {
 
 export function AccountSwitcher({ isCollapsed, accounts }: AccountSwitcherProps) {
   const [selectedAccount, setSelectedAccount] = React.useState<string>(accounts[0].email);
-
+  const { data: session } = useSession();
   return (
     <Select defaultValue={selectedAccount} onValueChange={setSelectedAccount}>
       <SelectTrigger
@@ -34,21 +37,21 @@ export function AccountSwitcher({ isCollapsed, accounts }: AccountSwitcherProps)
         aria-label="Select account"
       >
         <SelectValue placeholder="Select an account">
-          {accounts.find((account) => account.email === selectedAccount)?.icon}
-          <span className={cn("ml-2", isCollapsed && "hidden")}>
-            {accounts.find((account) => account.email === selectedAccount)?.label}
-          </span>
+          <FcGoogle className="w-5 h-5" />
+          <span className={cn("ml-2", isCollapsed && "hidden")}>{session?.user.name}</span>
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {accounts.map((account) => (
+        {/* {accounts.map((account) => (
           <SelectItem key={account.email} value={account.email}>
             <div className="flex items-center gap-3 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0 [&_svg]:text-foreground">
-              {account.icon}
               {account.email}
             </div>
           </SelectItem>
-        ))}
+        ))} */}
+        <Button variant="ghost" className="w-full">
+          Sign out
+        </Button>
       </SelectContent>
     </Select>
   );
