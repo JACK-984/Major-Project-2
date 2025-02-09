@@ -3,6 +3,9 @@ import { getGmailService } from "@/utils/gmail";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const pageToken = searchParams.get("pageToken") || undefined;
+
   const session = await auth();
   const access_token = session?.accessToken;
   const refresh_token = session?.refreshToken;
@@ -13,15 +16,14 @@ export async function GET(req: Request) {
 
   const gmail = getGmailService(access_token as string, refresh_token as string);
 
+  // Fetch the list of messages
   const response = await (
     await gmail
   ).users.messages.list({
     userId: "me",
-    maxResults: 10,
+    maxResults: 10, // Number of messages per page
+    pageToken, // Use the pageToken for pagination
   });
-
-  // // Return just the message IDs and basic info
-  // return new NextResponse(JSON.stringify(response.data.messages), { status: 200 });
 
   // Get full message details for each message
   const messages = await Promise.all(
@@ -31,70 +33,84 @@ export async function GET(req: Request) {
       ).users.messages.get({
         userId: "me",
         id: message.id as string,
-        format: "metadata",
-        metadataHeaders: ["subject", "from", "date"], // Request specific headers
+        format: "full", // Use "full" to get the complete message body
       });
 
-      // Extract subject from headers
+      // Extract headers
+      const headers = fullMessage.data.payload?.headers || [];
       const subject =
-        fullMessage.data.payload?.headers?.find(
-          (header) => header.name?.toLowerCase() === "subject"
-        )?.value || "No Subject";
-
-      // Extract sender from headers
+        headers.find((header) => header.name?.toLowerCase() === "subject")?.value || "No Subject";
       const from =
-        fullMessage.data.payload?.headers?.find((header) => header.name?.toLowerCase() === "from")
-          ?.value || "Unknown Sender";
+        headers.find((header) => header.name?.toLowerCase() === "from")?.value || "Unknown Sender";
+      const date = headers.find((header) => header.name?.toLowerCase() === "date")?.value || "";
+
+      // Extract the email address from the "From" header
+      const email = from.match(/<([^>]+)>/)?.[1] || from;
+
+      // Extract the sender's name from the "From" header
+      const name = from.replace(/<[^>]+>/, "").trim();
+
+      // Extract the message body (plain text or HTML)
+      const text = extractMessageBody(fullMessage.data.payload);
+
+      // Determine if the message is read
+      const read = !fullMessage.data.labelIds?.includes("UNREAD");
+
+      // Extract labels (if available)
+      const labels = fullMessage.data.labelIds || [];
 
       return {
         id: message.id,
-        threadId: message.threadId,
+        name,
+        email,
         subject,
-        from,
-        date: fullMessage.data.payload?.headers?.find(
-          (header) => header.name?.toLowerCase() === "date"
-        )?.value,
+        text,
+        date,
+        read,
+        labels,
       };
     }) || []
   );
 
-  return new NextResponse(JSON.stringify({ messages }), { status: 200 });
+  return new NextResponse(
+    JSON.stringify({
+      messages,
+      nextPageToken: response.data.nextPageToken, // Pass the nextPageToken to the frontend
+    }),
+    { status: 200 }
+  );
 }
 
-// const res2 = await (await gmail).users.messages.get({
-//   userId: "me",
-//   id: response.data.messages[0].id as string
-// })
+// Helper function to extract the message body
+function extractMessageBody(payload: any): string {
+  if (!payload) return "";
 
-// export async function GET(req: Request) {
-//   const session = await auth();
-//   const access_token = session?.accessToken;
-//   const refresh_token = session?.refreshToken;
+  // Helper function to decode base64 content
+  const decodeBody = (data: string) => {
+    return Buffer.from(data, "base64").toString("utf-8");
+  };
 
-//   if (session === null) return new NextResponse("Unauthorized", { status: 401 });
-//   else if (access_token === null) return new NextResponse("No access token", { status: 401 });
-//   else if (refresh_token === null) return new NextResponse("No refresh token", { status: 401 });
+  let htmlBody = "";
+  let plainTextBody = "";
 
-//   const gmail = getGmailService(access_token as string, refresh_token as string);
+  // Function to recursively search for message parts
+  const findBodies = (part: any) => {
+    // If this part has a body, check its type and store it
+    if (part.mimeType === "text/html" && part.body?.data) {
+      htmlBody = decodeBody(part.body.data);
+    } else if (part.mimeType === "text/plain" && part.body?.data) {
+      plainTextBody = decodeBody(part.body.data);
+    }
 
-//   const response = await (
-//     await gmail
-//   ).users.messages.list({
-//     userId: "me",
-//     maxResults: 10,
-//   });
+    // If this part has sub-parts, search through them
+    if (part.parts) {
+      part.parts.forEach(findBodies);
+    }
+  };
 
-//   const messages = await Promise.all(
-//     response.data.messages?.map(async (message) => {
-//       const fullMessage = await (
-//         await gmail
-//       ).users.messages.get({
-//         userId: "me",
-//         id: message.id as string,
-//       });
-//       return fullMessage.data;
-//     }) ?? []
-//   );
+  // Start the search with the initial payload
+  findBodies(payload);
 
-//   return new NextResponse(JSON.stringify(messages), { status: 200 });
-// }
+  // Return HTML content if available, otherwise return plain text
+  return htmlBody || plainTextBody || "";
+}

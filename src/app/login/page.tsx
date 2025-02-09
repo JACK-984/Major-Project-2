@@ -2,12 +2,22 @@
 
 import { Button } from "@/components/ui/button";
 import { signIn, signOut, useSession } from "next-auth/react";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import Image from "next/image";
 import { FcGoogle } from "react-icons/fc";
 
 export default function page() {
+  const [mail, setMail] = useState();
+  useEffect(() => {
+    const fetchMail = async () => {
+      const res = await fetch("api/mail");
+      const data = await res.json();
+      setMail(data);
+      console.log(data);
+    };
+    fetchMail();
+  }, []);
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
