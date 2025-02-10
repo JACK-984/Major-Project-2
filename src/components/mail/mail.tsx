@@ -58,7 +58,7 @@ export function Mail({
         className="items-stretch max-h-screen"
       >
         <ResizablePanel
-          defaultSize={defaultLayout[0]}
+          defaultSize={0}
           collapsedSize={navCollapsedSize}
           collapsible={true}
           minSize={15}
@@ -163,7 +163,7 @@ export function Mail({
           />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={defaultLayout[1]} minSize={30} className="overflow-y-auto">
+        <ResizablePanel defaultSize={40} minSize={30} className="overflow-y-auto">
           <Tabs defaultValue="all">
             <div className="flex items-center px-4 py-2">
               <h1 className="text-xl font-bold">Inbox</h1>
@@ -194,6 +194,7 @@ export function Mail({
           </Tabs>
         </ResizablePanel>
         <ResizableHandle withHandle />
+        {/* defaultSize={defaultLayout[2]} */}
         <ResizablePanel defaultSize={defaultLayout[2]} minSize={30}>
           <MailDisplay mail={selectedMail} />
         </ResizablePanel>

@@ -13,6 +13,7 @@ import {
   ReplyAll,
   Scroll,
   Trash2,
+  User,
 } from "lucide-react";
 
 import { DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -170,10 +171,12 @@ export function MailDisplay({ mail }: MailDisplayProps) {
                 <Avatar>
                   <AvatarImage alt={mail.name} />
                   <AvatarFallback>
-                    {mail.name
+                    {/* {mail.name
+                      .replace(/\s*\(.*?\)/, "")
                       .split(" ")
                       .map((chunk) => chunk[0])
-                      .join("")}
+                      .join("")} */}
+                    <User />
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid gap-1">

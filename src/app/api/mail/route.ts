@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     await gmail
   ).users.messages.list({
     userId: "me",
-    maxResults: 10, // Number of messages per page
+    maxResults: 5, // Number of messages per page
     pageToken, // Use the pageToken for pagination
   });
 
@@ -48,7 +48,8 @@ export async function GET(req: Request) {
       const email = from.match(/<([^>]+)>/)?.[1] || from;
 
       // Extract the sender's name from the "From" header
-      const name = from.replace(/<[^>]+>/, "").trim();
+      // Extract and clean the sender's name from the "From" header
+      const name = cleanName(from.replace(/<[^>]+>/, "").trim());
 
       // Extract the message body (plain text or HTML)
       const text = extractMessageBody(fullMessage.data.payload);
@@ -113,4 +114,11 @@ function extractMessageBody(payload: any): string {
 
   // Return HTML content if available, otherwise return plain text
   return htmlBody || plainTextBody || "";
+}
+// Helper function to clean name strings
+function cleanName(name: string): string {
+  return name
+    .replace(/^["']|["']$/g, "") // Remove quotes at start and end
+    .replace(/\\"/g, '"') // Replace escaped quotes with regular quotes
+    .trim(); // Remove any extra whitespace
 }
